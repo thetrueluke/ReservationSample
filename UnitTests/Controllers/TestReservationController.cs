@@ -79,8 +79,8 @@ namespace UnitTests.Controllers
             var result = await controller.AddReservation(reservationDetails);
 
             // Assert
-            result.Should().BeOfType<CreatedAtActionResult>();
-            var createdResult = result.As<CreatedAtActionResult>();
+            result.Result.Should().BeOfType<CreatedAtActionResult>();
+            var createdResult = result.Result.As<CreatedAtActionResult>();
             createdResult.Value.Should().BeOfType<Reservation>();
             var returnedReservation = createdResult.Value.As<Reservation>();
             returnedReservation.Id.Should().Be(1);
@@ -101,25 +101,28 @@ namespace UnitTests.Controllers
                 Id = reservationId,
                 Details = reservationDetails
             };
-            repositoryServiceMock.Setup(repo => repo.AddAsync(reservation)).Throws(new InvalidOperationException());
+            repositoryServiceMock.Setup(r => r.AddAsync(It.Is<Reservation>(r => r.Details == reservationDetails))).ThrowsAsync(new InvalidOperationException());
 
             // Act
             var result = await controller.AddReservation(reservationDetails);
 
             // Assert
-            result.Should().BeOfType<BadRequestResult>();
+            result.Result.Should().BeOfType<BadRequestResult>();
         }
 
         [TestMethod]
         public async Task UpdateReservation_WithValidId_ShouldReturnOk()
         {
             // Arrange
+            var reservationId = 1L;
             var existingReservationDetails = new ReservationDetails()
             {
                 ReserverName = "Old name",
                 ReserverSurname = "Old surname"
             };
-            var existingReservation = new Reservation() { Id = 1,
+            var existingReservation = new Reservation()
+            {
+                Id = reservationId,
                 Details = existingReservationDetails
             };
             var newReservationDetails = new ReservationDetails()
@@ -127,14 +130,14 @@ namespace UnitTests.Controllers
                 ReserverName = "New Name",
                 ReserverSurname = "New Surname"
             };
-            repositoryServiceMock.Setup(r => r.GetAsync(existingReservation.Id)).ReturnsAsync(existingReservation);
+            repositoryServiceMock.Setup(r => r.UpdateAsync(existingReservation.Id, It.Is<Reservation>(r => r.Details == newReservationDetails))).Verifiable();
 
             // Act
             var result = await controller.UpdateReservation(existingReservation.Id, newReservationDetails);
 
             // Assert
             result.Should().BeOfType<OkResult>();
-            repositoryServiceMock.Verify(r => r.UpdateAsync(It.Is<Reservation>(r =>
+            repositoryServiceMock.Verify(r => r.UpdateAsync(reservationId, It.Is<Reservation>(r =>
                 r.Id == existingReservation.Id &&
                 r.Details.ReserverName == newReservationDetails.ReserverName &&
                 r.Details.ReserverSurname == newReservationDetails.ReserverSurname)), Times.Once);
@@ -152,7 +155,7 @@ namespace UnitTests.Controllers
             };
 
             // Setup the repository to return null when queried for a non-existent reservation
-            repositoryServiceMock.Setup(repo => repo.GetAsync(reservationIdBad)).ReturnsAsync((Reservation?)null);
+            repositoryServiceMock.Setup(r => r.UpdateAsync(reservationIdBad, It.Is<Reservation>(r => r.Details == reservationDetails))).ThrowsAsync(new KeyNotFoundException());
 
             // Act
             var result = await controller.UpdateReservation(reservationIdBad, reservationDetails);
