@@ -4,6 +4,7 @@
     {
         Task<T?> GetAsync(long id);
         Task AddAsync(T entity);
-        Task UpdateAsync(T entity);
+        Task UpdateAsync(long id, T entity);
+        Task<int> GetCountAsync();
     }
 }
