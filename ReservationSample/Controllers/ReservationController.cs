@@ -14,19 +14,46 @@ namespace ReservationSample.Controllers
         [HttpGet("get/{reservationId}")]
         public async Task<ActionResult<Reservation>> GetReservation(long reservationId)
         {
-            throw new NotImplementedException();
+            var reservation = await repositoryService.GetAsync(reservationId);
+            return reservation is not null ? Ok(reservation) : NotFound();
         }
 
         [HttpPost("add")]
         public async Task<ActionResult<Reservation>> AddReservation([FromBody] ReservationDetails reservationDetails)
         {
-            throw new NotImplementedException();
+            var reservation = new Reservation()
+            {
+                Id = await repositoryService.GetCountAsync() + 1,
+                Details = reservationDetails
+            };
+            try
+            {
+                await repositoryService.AddAsync(reservation);
+                return CreatedAtAction(null, reservation);
+            }
+            catch (InvalidOperationException)
+            {
+                return BadRequest();
+            }
         }
 
         [HttpPost("update/{reservationId}")]
         public async Task<IActionResult> UpdateReservation(long reservationId, [FromBody] ReservationDetails reservationDetails)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var newReservation = new Reservation()
+                {
+                    Id = reservationId,
+                    Details = reservationDetails
+                };
+                await repositoryService.UpdateAsync(reservationId, newReservation);
+                return Ok();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
         }
     }
 }
